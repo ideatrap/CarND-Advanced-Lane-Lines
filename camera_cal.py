@@ -80,12 +80,11 @@ def test_undistort():
 ##########################
 
 def perspective_warp(img):
-    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     #position the corners
-    b_y = int((1 - 0.066) * img.shape[0])  # y of bottom of polygon, remove the bottom 7.77%
+    b_y = int((1 - 0.08) * img.shape[0])  # y of bottom of polygon, remove the bottom 7.77%
     t_y = int((1 - 0.34) * img.shape[0])  # y of top of polygram, remove the top 64.17%
-    t_x_l = img.shape[1] / 2 - 92  # x of top left point, 95 px from the middle of the x dim
-    t_x_r = img.shape[1] / 2 + 92  # x of top right point, 95 px from the middle of the x dim
+    t_x_l = img.shape[1] / 2 - 95  # x of top left point, 95 px from the middle of the x dim
+    t_x_r = img.shape[1] / 2 + 96  # x of top right point, 95 px from the middle of the x dim
 
     b_x_l = img.shape[1] / 2 - 420 # x of bottom left
     b_x_r = img.shape[1] / 2 + 420 # x of bottom right
@@ -102,6 +101,7 @@ def perspective_warp(img):
 
     #perform perspective transformation
     M = cv2.getPerspectiveTransform(src, dst)
+    MI = cv2.getPerspectiveTransform(dst, src)
     warped = cv2.warpPerspective(img, M, (img.shape[1],img.shape[0]),flags=cv2.INTER_LINEAR)
 
     return warped
@@ -109,8 +109,7 @@ def perspective_warp(img):
 
 def test_perspective_warp():
 
-    img = cv2.imread('test_images/straight_lines1.jpg')
-
+    img = cv2.imread('test_images/test4.jpg') #straight_lines1
     # undistort the image
     with open('imgpoints.pickle', 'rb') as f:
         imgpoints = pickle.load(f)
@@ -194,9 +193,56 @@ def dir_gradient(img, sobel_kernel=19, thresh=(0, np.pi/2)):
 
 
 
-def test_gradient_transform():
-    img = cv2.imread('test_images/test3.jpg')
-    #img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+######################
+#5. color thresholding
+######################
+
+def color_threshold(image, thresh = (0, 255)):
+    hls = cv2.cvtColor(image, cv2.COLOR_BGR2HLS)
+    S = hls[:, :, 2]
+    s_binary = np.zeros_like(S)
+    s_binary[(S >= thresh[0]) & (S <= thresh[1])] = 1
+
+    B = image[:, :, 0]
+    G = image[:, :, 1]
+    R = image[:, :, 2]
+
+    #select yellow
+    #target yellow range
+    y_r = 233
+    y_g = 198
+    y_b = 108
+
+    yellow = np.zeros_like(B)
+    yellow[(B>y_b-80)
+           &(B<y_b+60)
+           &(G>y_g-80)
+           &(G<y_g+60)
+           &(R>y_r-28)
+           &(R<y_r+28)]=1
+
+    # target white, bigger the number, whiter
+    w_r = 225
+    w_g = 223
+    w_b = 228
+    white = np.zeros_like(B)
+    white[(B > w_b - 80)
+           & (B < 255)
+           & (G > w_g - 80)
+           & (G < 255)
+           & (R > w_r - 28)
+           & (R < 255)] = 1
+
+    combined = np.zeros_like(B)
+    combined[((white == 1) | (yellow == 1)) &(s_binary ==1)] = 1
+    return s_binary
+
+
+def test_threshold():
+    #img = cv2.imread('test_images/straight_lines2.jpg')
+    img = cv2.imread('test_images/test2.jpg')
+    #test4 is a stress test
+    #img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
     # undistort the image
     with open('imgpoints.pickle', 'rb') as f:
@@ -208,29 +254,20 @@ def test_gradient_transform():
     warped = perspective_warp(undist)
 
     gradx= sobelX_transform(warped)
-    grady = sobelY_transform(warped)
+    #grady = sobelY_transform(warped)
+    grad_mag = mag_gradient(warped, mag_thresh=(33,255))
+    grad_dir = dir_gradient(warped,thresh=(0.6, 2))
+    color = color_threshold(warped, thresh=(65,255))
 
-    grad_max = mag_gradient(warped, mag_thresh=(33,255))
-    # direction gradient is not very useful
-    #grad_dir = dir_gradient(warped,thresh=(0.6, 2))
+    combined = np.zeros_like(gradx)
+    combined[((gradx == 1) | grad_mag ==1) & (color ==1) ] = 1
 
-    output = np.zeros_like(gradx)
-    output[((gradx == 1) & (grady == 1)) | ((grad_max == 1))] = 1
-
-    plt.imshow(output, cmap='gray')
+    plt.imshow(combined, cmap='gray')
     plt.show()
 
-#test_gradient_transform()
+#test_threshold()
 
 
-######################
-#5. color thresholding
-######################
-
-def color_threshold(img):
-    pass
-
-def test_color_threshold():
-    pass
-
-test_color_threshold()
+################
+#6. Find the lane
+################
