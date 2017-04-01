@@ -65,7 +65,6 @@ def test_undistort():
 
     #img = cv2.imread('camera_cal/calibration4.jpg')
     img = cv2.imread('test_images/test1.jpg')
-    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     plt.imshow(img)
     plt.show()
 
@@ -81,28 +80,15 @@ def test_undistort():
 ##########################
 
 def perspective_warp(img):
-
-    '''
-
-    #undistort the image
-    with open('imgpoints.pickle', 'rb') as f:
-        imgpoints = pickle.load(f)
-    with open('objpoints.pickle', 'rb') as f:
-        objpoints = pickle.load(f)
-    undist = undistort(img,objpoints,imgpoints)
-    '''
-
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     #position the corners
     b_y = int((1 - 0.066) * img.shape[0])  # y of bottom of polygon, remove the bottom 7.77%
     t_y = int((1 - 0.34) * img.shape[0])  # y of top of polygram, remove the top 64.17%
     t_x_l = img.shape[1] / 2 - 92  # x of top left point, 95 px from the middle of the x dim
     t_x_r = img.shape[1] / 2 + 92  # x of top right point, 95 px from the middle of the x dim
-    o_height = b_y - t_y  # height of the orginal cropped image
-    b_x_l = t_x_l - int(o_height / np.tan(32.2 * pi / 180))#x of the left bottom point
-    b_x_r = t_x_r + int(o_height / np.tan(30.5 * pi / 180))#y of the right bottom point
 
-    b_x_l = img.shape[1] / 2 - 420
-    b_x_r = img.shape[1] / 2 + 420
+    b_x_l = img.shape[1] / 2 - 420 # x of bottom left
+    b_x_r = img.shape[1] / 2 + 420 # x of bottom right
     #points of original warped imgae
     # top_left, bottom_left, top_right, bottom_right
     src = np.float32([[t_x_l, t_y], [b_x_l, b_y], [t_x_r, t_y], [b_x_r, b_y]])
@@ -110,7 +96,7 @@ def perspective_warp(img):
 
     # point of the destination image
     # top_left, bottom_left, top_right, bottom_right
-    factor=0.8
+    factor=0.5
     dst = np.float32([[b_x_l, t_y * factor], [b_x_l, b_y], [b_x_r, t_y * factor], [b_x_r, b_y]])
 
 
@@ -122,9 +108,17 @@ def perspective_warp(img):
 
 
 def test_perspective_warp():
-    img = cv2.imread('test_images/straight_lines2.jpg')
-    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-    warped = perspective_warp(img)
+
+    img = cv2.imread('test_images/straight_lines1.jpg')
+
+    # undistort the image
+    with open('imgpoints.pickle', 'rb') as f:
+        imgpoints = pickle.load(f)
+    with open('objpoints.pickle', 'rb') as f:
+        objpoints = pickle.load(f)
+    undist = undistort(img, objpoints, imgpoints)
+
+    warped = perspective_warp(undist)
     plt.imshow(warped)
     plt.show()
 
@@ -132,6 +126,111 @@ def test_perspective_warp():
 
 
 ########################
-#4. Use color transforms, gradients, etc., to create a thresholded binary image
+#4. Use gradients to create a thresholded binary image
 ########################
 
+#sobel x transformation
+def sobelX_transform(img):
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    sobelx = cv2.Sobel(gray, cv2.CV_64F, 1, 0, ksize=19)
+    abs_sobelx = np.absolute(sobelx)
+    scaled_sobel = np.uint8(255 * abs_sobelx / np.max(abs_sobelx))
+    thresh_min = 20
+    thresh_max = 110
+    sxbinary = np.zeros_like(scaled_sobel)
+    sxbinary[(scaled_sobel >= thresh_min) & (scaled_sobel <= thresh_max)] = 1
+    return sxbinary
+
+def sobelY_transform(img):
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    sobely = cv2.Sobel(gray, cv2.CV_64F, 0, 1, ksize=19)
+    abs_sobely = np.absolute(sobely)
+    scaled_sobel = np.uint8(255 * abs_sobely / np.max(abs_sobely))
+    thresh_min = 20
+    thresh_max = 110
+    sxbinary = np.zeros_like(scaled_sobel)
+    sxbinary[(scaled_sobel >= thresh_min) & (scaled_sobel <= thresh_max)] = 1
+    return sxbinary
+
+
+def mag_gradient(img, sobel_kernel=19, mag_thresh=(0, 255)):
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
+    # Take both Sobel x and y gradients
+    sobelx = cv2.Sobel(gray, cv2.CV_64F, 1, 0, ksize=sobel_kernel)
+    sobely = cv2.Sobel(gray, cv2.CV_64F, 0, 1, ksize=sobel_kernel)
+
+    # Calculate the gradient magnitude
+    gradmag = np.sqrt(sobelx ** 2 + sobely ** 2)
+
+    # Rescale to 8 bit
+    scale_factor = np.max(gradmag) / 255
+    gradmag = (gradmag / scale_factor).astype(np.uint8)
+
+    # Create a binary image of ones where threshold is met, zeros otherwise
+    binary_output = np.zeros_like(gradmag)
+    binary_output[(gradmag >= mag_thresh[0]) & (gradmag <= mag_thresh[1])] = 1
+
+
+    return binary_output
+
+
+def dir_gradient(img, sobel_kernel=19, thresh=(0, np.pi/2)):
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    #Take the gradient in x and y separately
+    sobelx = cv2.Sobel(gray, cv2.CV_64F, 1, 0, ksize=sobel_kernel)
+    sobely = cv2.Sobel(gray, cv2.CV_64F, 0, 1, ksize=sobel_kernel)
+
+    #Take the absolute value of the x and y gradients
+    abs_sobelx = np.absolute(sobelx)
+    abs_sobely = np.absolute(sobely)
+
+    #Use np.arctan2(abs_sobely, abs_sobelx) to calculate the direction of the gradient
+    dirG = np.arctan2(abs_sobely, abs_sobelx)
+    binary_output = np.zeros_like(dirG)
+    binary_output[(dirG >= thresh[0]) & (dirG <= thresh[1])] = 1
+
+    return binary_output
+
+
+
+def test_gradient_transform():
+    img = cv2.imread('test_images/test3.jpg')
+    #img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+
+    # undistort the image
+    with open('imgpoints.pickle', 'rb') as f:
+        imgpoints = pickle.load(f)
+    with open('objpoints.pickle', 'rb') as f:
+        objpoints = pickle.load(f)
+    undist = undistort(img, objpoints, imgpoints)
+
+    warped = perspective_warp(undist)
+
+    gradx= sobelX_transform(warped)
+    grady = sobelY_transform(warped)
+
+    grad_max = mag_gradient(warped, mag_thresh=(33,255))
+    # direction gradient is not very useful
+    #grad_dir = dir_gradient(warped,thresh=(0.6, 2))
+
+    output = np.zeros_like(gradx)
+    output[((gradx == 1) & (grady == 1)) | ((grad_max == 1))] = 1
+
+    plt.imshow(output, cmap='gray')
+    plt.show()
+
+#test_gradient_transform()
+
+
+######################
+#5. color thresholding
+######################
+
+def color_threshold(img):
+    pass
+
+def test_color_threshold():
+    pass
+
+test_color_threshold()
