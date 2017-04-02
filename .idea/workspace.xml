@@ -21,7 +21,7 @@
         <entry file="file://$PROJECT_DIR$/main.py">
           <provider selected="true" editor-type-id="text-editor">
             <state relative-caret-position="85">
-              <caret line="5" column="39" lean-forward="true" selection-start-line="5" selection-start-column="39" selection-end-line="5" selection-end-column="39" />
+              <caret line="5" column="39" lean-forward="false" selection-start-line="5" selection-start-column="39" selection-end-line="5" selection-end-column="39" />
               <folding>
                 <element signature="e#419#429#0" expanded="true" />
               </folding>
@@ -32,8 +32,8 @@
       <file leaf-file-name="camera_cal.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/camera_cal.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="379">
-              <caret line="271" column="17" lean-forward="false" selection-start-line="271" selection-start-column="17" selection-end-line="271" selection-end-column="17" />
+            <state relative-caret-position="404">
+              <caret line="350" column="40" lean-forward="true" selection-start-line="350" selection-start-column="40" selection-end-line="350" selection-end-column="40" />
               <folding>
                 <element signature="e#0#10#0" expanded="true" />
               </folding>
@@ -50,6 +50,11 @@
       </list>
     </option>
   </component>
+  <component name="FindInProjectRecents">
+    <findStrings>
+      <find>window_height</find>
+    </findStrings>
+  </component>
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
@@ -65,7 +70,7 @@
     </option>
   </component>
   <component name="ProjectFrameBounds">
-    <option name="x" value="211" />
+    <option name="x" value="228" />
     <option name="y" value="22" />
     <option name="width" value="1210" />
     <option name="height" value="876" />
@@ -309,6 +314,9 @@
   <component name="ShelveChangesManager" show_recycled="false">
     <option name="remove_strategy" value="false" />
   </component>
+  <component name="SvnConfiguration">
+    <configuration />
+  </component>
   <component name="TaskManager">
     <task active="true" id="Default" summary="Default task">
       <changelist id="348fa58a-cbba-4f1d-adbc-152b4d668ebf" name="Default" comment="" />
@@ -320,7 +328,7 @@
     <servers />
   </component>
   <component name="ToolWindowManager">
-    <frame x="211" y="22" width="1210" height="876" extended-state="0" />
+    <frame x="228" y="22" width="1210" height="876" extended-state="0" />
     <editor active="true" />
     <layout>
       <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.14045416" sideWeight="0.5" order="0" side_tool="false" content_ui="combo" />
@@ -489,7 +497,7 @@
     <entry file="file://$PROJECT_DIR$/main.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="85">
-          <caret line="5" column="39" lean-forward="true" selection-start-line="5" selection-start-column="39" selection-end-line="5" selection-end-column="39" />
+          <caret line="5" column="39" lean-forward="false" selection-start-line="5" selection-start-column="39" selection-end-line="5" selection-end-column="39" />
           <folding>
             <element signature="e#419#429#0" expanded="true" />
           </folding>
@@ -503,8 +511,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/camera_cal.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="379">
-          <caret line="271" column="17" lean-forward="false" selection-start-line="271" selection-start-column="17" selection-end-line="271" selection-end-column="17" />
+        <state relative-caret-position="404">
+          <caret line="350" column="40" lean-forward="true" selection-start-line="350" selection-start-column="40" selection-end-line="350" selection-end-column="40" />
           <folding>
             <element signature="e#0#10#0" expanded="true" />
           </folding>
