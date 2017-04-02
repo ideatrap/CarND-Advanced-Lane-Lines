@@ -129,13 +129,13 @@ def test_perspective_warp():
 ########################
 
 #sobel x transformation
-def sobelX_transform(img):
+def sobelX_transform(img, thresh=(0,255)):
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    sobelx = cv2.Sobel(gray, cv2.CV_64F, 1, 0, ksize=19)
+    sobelx = cv2.Sobel(gray, cv2.CV_64F, 1, 0, ksize=21)
     abs_sobelx = np.absolute(sobelx)
     scaled_sobel = np.uint8(255 * abs_sobelx / np.max(abs_sobelx))
-    thresh_min = 20
-    thresh_max = 110
+    thresh_min = thresh[0]
+    thresh_max = thresh[1]
     sxbinary = np.zeros_like(scaled_sobel)
     sxbinary[(scaled_sobel >= thresh_min) & (scaled_sobel <= thresh_max)] = 1
     return sxbinary
@@ -208,51 +208,52 @@ def color_threshold(image, thresh = (0, 255)):
     R = image[:, :, 2]
 
     #select yellow
-    #target yellow range
+    #target yellow color
     y_r = 233
     y_g = 198
-    y_b = 108
+    y_b = 148
 
+    width = 12
     yellow = np.zeros_like(B)
-    yellow[(B>y_b-80)
-           &(B<y_b+60)
-           &(G>y_g-80)
-           &(G<y_g+60)
-           &(R>y_r-28)
-           &(R<y_r+28)]=1
+    yellow[(B>y_b-width)
+           &(B<y_b+width)
+           &(G>y_g-width)
+           &(G<y_g+width)
+           &(R>y_r-width)
+           &(R<y_r+width)]=1
 
-    # target white, bigger the number, whiter
+    # target white color
     w_r = 225
     w_g = 223
     w_b = 228
     white = np.zeros_like(B)
-    white[(B > w_b - 80)
+    w_factor = 10
+    white[(B > w_b - w_factor)
            & (B < 255)
-           & (G > w_g - 80)
+           & (G > w_g - w_factor)
            & (G < 255)
-           & (R > w_r - 28)
+           & (R > w_r - w_factor)
            & (R < 255)] = 1
 
     combined = np.zeros_like(B)
-    combined[((white == 1) | (yellow == 1)) &(s_binary ==1)] = 1
-    return s_binary
+    combined[((white == 1) | (yellow == 1)) & (s_binary ==1)] = 1
+    return combined
 
 
 def combine_gradient(img):
-    gradx = sobelX_transform(img)
-    # grady = sobelY_transform(warped)
+    gradx = sobelX_transform(img,thresh=(35, 130))
+    #grady = sobelY_transform(img)
     grad_mag = mag_gradient(img, mag_thresh=(33, 255))
     #grad_dir = dir_gradient(img, thresh=(0.6, 2))
     color = color_threshold(img, thresh=(65, 255))
 
     combined = np.zeros_like(gradx)
-    combined[((gradx == 1) | grad_mag == 1) & (color == 1)] = 1
+    combined[((gradx == 1) | grad_mag == 1) | (color == 1)] = 1
     return combined
 
 def test_threshold():
     #img = cv2.imread('test_images/straight_lines2.jpg')
-    img = cv2.imread('test_images/test2.jpg')
-    #test4 is a stress test
+    img = cv2.imread('test_images/test1.jpg')
 
     # undistort the image
     with open('imgpoints.pickle', 'rb') as f:
@@ -272,7 +273,7 @@ def test_threshold():
 
 
 ################
-#6. Find the lane
+#6. Find the lane. Detect lane pixels and fit to find the lane boundary
 ################
 def find_lane(img):
     # Take a histogram of the bottom half of the image
@@ -286,8 +287,8 @@ def find_lane(img):
     leftx_base = np.argmax(histogram[:midpoint]) #left peak
     rightx_base = np.argmax(histogram[midpoint:]) + midpoint # right peak
 
-    #9 sliding window
-    nwindows = 2
+    #number of sliding window
+    nwindows = 9
 
     window_height = np.int(img.shape[0] / nwindows) #y axis for each window
 
@@ -302,7 +303,7 @@ def find_lane(img):
     rightx_current = rightx_base
 
     # Set the width of the windows +/- margin
-    margin = 57
+    margin = 75
     # Set minimum number of pixels found to recenter window
     minpix = 45
 
@@ -343,26 +344,31 @@ def find_lane(img):
         if len(good_right_inds) > minpix:
             rightx_current = np.int(np.mean(nonzerox[good_right_inds]))
 
-        # Concatenate the arrays of indices
-        left_lane_inds = np.concatenate(left_lane_inds)
-        right_lane_inds = np.concatenate(right_lane_inds)
+    # Concatenate the arrays of indices
+    left_lane_inds = np.concatenate(left_lane_inds)
+    right_lane_inds = np.concatenate(right_lane_inds)
 
-        # Extract left and right line pixel positions
-        leftx = nonzerox[left_lane_inds]
-        lefty = nonzeroy[left_lane_inds]
-        rightx = nonzerox[right_lane_inds]
-        righty = nonzeroy[right_lane_inds]
+    # Extract left and right line pixel positions
+    leftx = nonzerox[left_lane_inds]
+    lefty = nonzeroy[left_lane_inds]
+    rightx = nonzerox[right_lane_inds]
+    righty = nonzeroy[right_lane_inds]
 
-        # Fit a second order polynomial to each
-        left_fit = np.polyfit(lefty, leftx, 2) # fit polynomial across all visible points
-        right_fit = np.polyfit(righty, rightx, 2)
+    # Fit a second order polynomial to each
+    left_fit = np.polyfit(lefty, leftx, 2,full=True) # fit polynomial across all selected points
+    right_fit = np.polyfit(righty, rightx, 2, full=True)
 
+    #sum of error in fitting the polynomial
+    left_error = left_fit[1]
+    right_error = right_fit[1]
 
+    #print("Left error: {:,}".format(int(left_error)))
+    #print("Right error: {:,}".format(int(right_error)))
 
     # plot the chart
     ploty = np.linspace(0, img.shape[0] - 1, img.shape[0])
-    left_fitx = left_fit[0] * ploty ** 2 + left_fit[1] * ploty + left_fit[2]
-    right_fitx = right_fit[0] * ploty ** 2 + right_fit[1] * ploty + right_fit[2]
+    left_fitx = left_fit[0][0] * ploty ** 2 + left_fit[0][1] * ploty + left_fit[0][2]
+    right_fitx = right_fit[0][0] * ploty ** 2 + right_fit[0][1] * ploty + right_fit[0][2]
 
     out_img[nonzeroy[left_lane_inds], nonzerox[left_lane_inds]] = [255, 0, 0]
     out_img[nonzeroy[right_lane_inds], nonzerox[right_lane_inds]] = [0, 0, 255]
@@ -371,12 +377,15 @@ def find_lane(img):
     plt.plot(right_fitx, ploty, color='yellow')
     plt.xlim(0, 1280)
     plt.ylim(720, 0)
+
     plt.show()
 
 
+
+
 def test_find_lane():
-    img = cv2.imread('test_images/straight_lines1.jpg')
-    #img = cv2.imread('test_images/test2.jpg')
+    #img = cv2.imread('test_images/straight_lines2.jpg')
+    img = cv2.imread('test_images/test6.jpg')
     # test4 is a stress test
     # undistort the image
     with open('imgpoints.pickle', 'rb') as f:
@@ -391,4 +400,11 @@ def test_find_lane():
 
     find_lane(combined)
 
-test_find_lane()
+
+#test_find_lane()
+
+#################
+#7. Calculate radius of lane curvature
+#################
+
+
