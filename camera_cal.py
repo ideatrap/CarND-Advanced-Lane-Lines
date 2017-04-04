@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 import pickle
-from math import pi
+
 
 #########
 #1. function to obtain camera distortion parameters
@@ -104,7 +104,7 @@ def perspective_warp(img):
     MI = cv2.getPerspectiveTransform(dst, src)
     warped = cv2.warpPerspective(img, M, (img.shape[1],img.shape[0]),flags=cv2.INTER_LINEAR)
 
-    return warped
+    return warped, MI
 
 
 def test_perspective_warp():
@@ -275,7 +275,7 @@ def test_threshold():
 ################
 #6. Find the lane. Detect lane pixels and fit to find the lane boundary
 ################
-def find_lane(img):
+def find_lane(img, draw = True):
     # Take a histogram of the bottom half of the image
     histogram = np.sum(img[int(img.shape[0] / 2):, :], axis=0)
 
@@ -303,7 +303,7 @@ def find_lane(img):
     rightx_current = rightx_base
 
     # Set the width of the windows +/- margin
-    margin = 75
+    margin = 90
     # Set minimum number of pixels found to recenter window
     minpix = 45
 
@@ -355,32 +355,85 @@ def find_lane(img):
     righty = nonzeroy[right_lane_inds]
 
     # Fit a second order polynomial to each
-    left_fit = np.polyfit(lefty, leftx, 2,full=True) # fit polynomial across all selected points
-    right_fit = np.polyfit(righty, rightx, 2, full=True)
+    left_fit = np.polyfit(lefty, leftx, 2) # fit polynomial across all selected points
+    right_fit = np.polyfit(righty, rightx, 2)
 
-    #sum of error in fitting the polynomial
-    left_error = left_fit[1]
-    right_error = right_fit[1]
 
     #print("Left error: {:,}".format(int(left_error)))
     #print("Right error: {:,}".format(int(right_error)))
 
-    # plot the chart
+
     ploty = np.linspace(0, img.shape[0] - 1, img.shape[0])
-    left_fitx = left_fit[0][0] * ploty ** 2 + left_fit[0][1] * ploty + left_fit[0][2]
-    right_fitx = right_fit[0][0] * ploty ** 2 + right_fit[0][1] * ploty + right_fit[0][2]
+    left_fitx = left_fit[0] * ploty ** 2 + left_fit[1] * ploty + left_fit[2]
+    right_fitx = right_fit[0] * ploty ** 2 + right_fit[1] * ploty + right_fit[2]
 
-    out_img[nonzeroy[left_lane_inds], nonzerox[left_lane_inds]] = [255, 0, 0]
-    out_img[nonzeroy[right_lane_inds], nonzerox[right_lane_inds]] = [0, 0, 255]
-    plt.imshow(out_img)
-    plt.plot(left_fitx, ploty, color='yellow')
-    plt.plot(right_fitx, ploty, color='yellow')
-    plt.xlim(0, 1280)
-    plt.ylim(720, 0)
+    # plot the chart
+    if draw == True:
+        out_img[nonzeroy[left_lane_inds], nonzerox[left_lane_inds]] = [255, 0, 0]
+        out_img[nonzeroy[right_lane_inds], nonzerox[right_lane_inds]] = [0, 0, 255]
+        plt.imshow(out_img)
+        plt.plot(left_fitx, ploty, color='yellow')
+        plt.plot(right_fitx, ploty, color='yellow')
+        plt.xlim(0, 1280)
+        plt.ylim(720, 0)
+        plt.show()
 
-    plt.show()
+    return left_fit, right_fit, leftx, rightx, lefty, righty, left_fitx, right_fitx
 
+def previous_poly(img, left_fit, right_fit, draw = True):
+    #after knowing the lane from previous image, just to search within the confined area
+    nonzero = img.nonzero()
+    nonzeroy = np.array(nonzero[0])
+    nonzerox = np.array(nonzero[1])
+    margin = 90
+    left_lane_inds = ((nonzerox > (left_fit[0] * (nonzeroy ** 2) + left_fit[1] * nonzeroy + left_fit[2] - margin)) & (
+    nonzerox < (left_fit[0] * (nonzeroy ** 2) + left_fit[1] * nonzeroy + left_fit[2] + margin)))
+    right_lane_inds = (
+    (nonzerox > (right_fit[0] * (nonzeroy ** 2) + right_fit[1] * nonzeroy + right_fit[2] - margin)) & (
+    nonzerox < (right_fit[0] * (nonzeroy ** 2) + right_fit[1] * nonzeroy + right_fit[2] + margin)))
 
+    # Again, extract left and right line pixel positions
+    leftx = nonzerox[left_lane_inds]
+    lefty = nonzeroy[left_lane_inds]
+    rightx = nonzerox[right_lane_inds]
+    righty = nonzeroy[right_lane_inds]
+    # Fit a second order polynomial to each
+    left_fit = np.polyfit(lefty, leftx, 2)
+    right_fit = np.polyfit(righty, rightx, 2)
+    # Generate x and y values for plotting
+    ploty = np.linspace(0, img.shape[0] - 1, img.shape[0])
+    left_fitx = left_fit[0] * ploty ** 2 + left_fit[1] * ploty + left_fit[2]
+    right_fitx = right_fit[0] * ploty ** 2 + right_fit[1] * ploty + right_fit[2]
+
+    if draw == True:
+        # Create an image to draw on and an image to show the selection window
+        out_img = np.dstack((img, img, img)) * 255
+        window_img = np.zeros_like(out_img)
+        # Color in left and right line pixels
+        out_img[nonzeroy[left_lane_inds], nonzerox[left_lane_inds]] = [255, 0, 0]
+        out_img[nonzeroy[right_lane_inds], nonzerox[right_lane_inds]] = [0, 0, 255]
+
+        # Generate a polygon to illustrate the search window area
+        # And recast the x and y points into usable format for cv2.fillPoly()
+        left_line_window1 = np.array([np.transpose(np.vstack([left_fitx - margin, ploty]))])
+        left_line_window2 = np.array([np.flipud(np.transpose(np.vstack([left_fitx + margin, ploty])))])
+        left_line_pts = np.hstack((left_line_window1, left_line_window2))
+        right_line_window1 = np.array([np.transpose(np.vstack([right_fitx - margin, ploty]))])
+        right_line_window2 = np.array([np.flipud(np.transpose(np.vstack([right_fitx + margin, ploty])))])
+        right_line_pts = np.hstack((right_line_window1, right_line_window2))
+
+        # Draw the lane onto the warped blank image
+        cv2.fillPoly(window_img, np.int_([left_line_pts]), (0, 255, 0))
+        cv2.fillPoly(window_img, np.int_([right_line_pts]), (0, 255, 0))
+        result = cv2.addWeighted(out_img, 1, window_img, 0.3, 0)
+        plt.imshow(result)
+        plt.plot(left_fitx, ploty, color='yellow')
+        plt.plot(right_fitx, ploty, color='yellow')
+        plt.xlim(0, 1280)
+        plt.ylim(720, 0)
+        plt.show()
+
+    return left_fit, right_fit, leftx, rightx, lefty, righty, left_fitx, right_fitx
 
 
 def test_find_lane():
@@ -396,9 +449,11 @@ def test_find_lane():
 
     warped = perspective_warp(undist)
 
-    combined = combine_gradient(warped)
+    grad_img = combine_gradient(warped)
 
-    find_lane(combined)
+    left_fit, right_fit = find_lane(grad_img, draw=False)
+
+    previous_poly(grad_img, left_fit,right_fit, draw=True)
 
 
 #test_find_lane()
@@ -407,4 +462,114 @@ def test_find_lane():
 #7. Calculate radius of lane curvature
 #################
 
+def cal_radius(shape, left_fit, right_fit):
+    ploty = np.linspace(0, shape[0] - 1, shape[0])  # to cover same y-range as image
+    # I'll choose the maximum y-value, corresponding to the bottom of the image
+    y_eval = np.max(ploty)
+    left_curverad = ((1 + (2 * left_fit[0] * y_eval + left_fit[1]) ** 2) ** 1.5) / np.absolute(2 * left_fit[0])
+    right_curverad = ((1 + (2 * right_fit[0] * y_eval + right_fit[1]) ** 2) ** 1.5) / np.absolute(2 * right_fit[0])
+
+    return left_curverad, right_curverad
+
+
+
+def cal_radius_real(leftx, rightx, lefty, righty):
+    y_eval_l = np.max(lefty)  #where radius is evaluated
+    y_eval_r = np.max(righty)
+    # Define conversions in x and y from pixels space to meters
+    xm_per_pix = 3.7 / 700  # meters per pixel in x dimension
+    ym_per_pix = 30 / 720  # meters per pixel in y dimension
+
+
+    # Fit new polynomials to x,y in world space
+    left_fit_cr = np.polyfit(lefty * ym_per_pix, leftx * xm_per_pix, 2)
+    right_fit_cr = np.polyfit(righty * ym_per_pix, rightx * xm_per_pix, 2)
+    # Calculate the new radii of curvature
+    left_curverad = ((1 + (2 * left_fit_cr[0] * y_eval_l * ym_per_pix + left_fit_cr[1]) ** 2) ** 1.5) / np.absolute(
+        2 * left_fit_cr[0])
+    right_curverad = ((1 + (2 * right_fit_cr[0] * y_eval_r * ym_per_pix + right_fit_cr[1]) ** 2) ** 1.5) / np.absolute(
+        2 * right_fit_cr[0])
+
+    # Now our radius of curvature is in meters
+    return left_curverad, right_curverad
+    # Example values: 632.1 m    626.2 m
+
+
+def test_cal_radius():
+    img = cv2.imread('test_images/straight_lines1.jpg')
+    #img = cv2.imread('test_images/test1.jpg')
+    # test4 is a stress test
+    # undistort the image
+    with open('imgpoints.pickle', 'rb') as f:
+        imgpoints = pickle.load(f)
+    with open('objpoints.pickle', 'rb') as f:
+        objpoints = pickle.load(f)
+    undist = undistort(img, objpoints, imgpoints)
+
+    warped = perspective_warp(undist)
+
+    grad_img = combine_gradient(warped)
+
+    left_fit, right_fit, leftx, rightx, lefty, righty= find_lane(grad_img, draw=False)
+
+    #a,b = cal_radius(grad_img.shape, left_fit, right_fit)
+    l_m,r_m = cal_radius_real(leftx, rightx, lefty, righty)
+
+    print('Left radius is {:.1f} m'.format(l_m))
+    print('Right radius is {:.1f} m'.format(r_m))
+
+
+#test_cal_radius()
+
+################
+#8. draw the detected lane on the image
+################
+
+
+def draw_lanes(Minv, left_fitx, right_fitx, undist, dim = (720, 1280)):
+    ploty = np.linspace(0, dim[0] - 1, dim[0])
+    # Create an image to draw the lines on
+    warp_zero = np.zeros(dim).astype(np.uint8)
+    color_warp = np.dstack((warp_zero, warp_zero, warp_zero))
+
+    # Recast the x and y points into usable format for cv2.fillPoly()
+    pts_left = np.array([np.transpose(np.vstack([left_fitx, ploty]))])
+    pts_right = np.array([np.flipud(np.transpose(np.vstack([right_fitx, ploty])))])
+    pts = np.hstack((pts_left, pts_right))
+
+    # Draw the lane onto the warped blank image
+    cv2.fillPoly(color_warp, np.int_([pts]), (0, 255, 0))
+
+    # Warp the blank back to original image space using inverse perspective matrix (Minv)
+    newwarp = cv2.warpPerspective(color_warp, Minv, (dim[1], dim[0]))
+    # Combine the result with the original image
+    result = cv2.addWeighted(undist, 1, newwarp, 0.3, 0)
+    result = cv2.cvtColor(result, cv2.COLOR_BGR2RGB)
+    plt.imshow(result)
+    plt.show()
+
+def test_draw_lanes():
+    #img = cv2.imread('test_images/straight_lines2.jpg')
+    img = cv2.imread('test_images/test6.jpg')
+    # test4 is a stress test
+    # undistort the image
+    with open('imgpoints.pickle', 'rb') as f:
+        imgpoints = pickle.load(f)
+    with open('objpoints.pickle', 'rb') as f:
+        objpoints = pickle.load(f)
+    undist = undistort(img, objpoints, imgpoints)
+
+    warped, MI = perspective_warp(undist)
+
+    grad_img = combine_gradient(warped)
+
+    left_fit, right_fit, leftx, rightx, lefty, righty, left_fitx, right_fitx = find_lane(grad_img, draw=False)
+
+    draw_lanes(MI, left_fitx, right_fitx, undist)
+
+test_draw_lanes()
+
+################
+#9. pipeline
+################
 
