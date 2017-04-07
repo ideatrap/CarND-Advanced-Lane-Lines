@@ -440,17 +440,17 @@ def test_find_lane():
     # undistort the image
     undist = undistort(img, objpoints, imgpoints)
 
-    M = perspective_warp(undist)
+    M, MI = perspective_warp(undist)
     warped = cv2.warpPerspective(undist, M, (undist.shape[1], undist.shape[0]), flags=cv2.INTER_LINEAR)
 
     grad_img = combine_gradient(warped)
 
-    left_fit, right_fit = find_lane(grad_img, draw=False)
+    left_fit, right_fit = find_lane(grad_img, draw=True)
 
-    previous_poly(grad_img, left_fit,right_fit, draw=True)
+    #previous_poly(grad_img, left_fit,right_fit, draw=True)
 
 
-#test_find_lane()
+test_find_lane()
 
 #################
 #7. Calculate radius of lane curvature

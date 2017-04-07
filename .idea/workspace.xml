@@ -2,13 +2,8 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="348fa58a-cbba-4f1d-adbc-152b4d668ebf" name="Default" comment="">
-      <change type="DELETED" beforePath="$PROJECT_DIR$/challenge_video.mp4" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/harder_challenge_video.mp4" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/lane_marking.mp4" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/lane_marking_1.mp4" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/project_video.mp4" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/test.py" afterPath="" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/model.py" afterPath="$PROJECT_DIR$/model.py" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/writeup.md" afterPath="$PROJECT_DIR$/writeup.md" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="TRACKING_ENABLED" value="true" />
@@ -26,8 +21,8 @@
       <file leaf-file-name="model.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/model.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="11288">
-              <caret line="672" column="90" lean-forward="false" selection-start-line="672" selection-start-column="90" selection-end-line="672" selection-end-column="90" />
+            <state relative-caret-position="-1734">
+              <caret line="452" column="0" lean-forward="false" selection-start-line="452" selection-start-column="0" selection-end-line="452" selection-end-column="0" />
               <folding>
                 <element signature="e#0#10#0" expanded="true" />
               </folding>
@@ -60,6 +55,7 @@
       <find>cal_radius_real</find>
       <find>previous_poly</find>
       <find>draw_lanes</find>
+      <find>objpoints</find>
     </findStrings>
   </component>
   <component name="Git.Settings">
@@ -567,8 +563,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/model.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="11288">
-          <caret line="672" column="90" lean-forward="false" selection-start-line="672" selection-start-column="90" selection-end-line="672" selection-end-column="90" />
+        <state relative-caret-position="-1734">
+          <caret line="452" column="0" lean-forward="false" selection-start-line="452" selection-start-column="0" selection-end-line="452" selection-end-column="0" />
           <folding>
             <element signature="e#0#10#0" expanded="true" />
           </folding>
