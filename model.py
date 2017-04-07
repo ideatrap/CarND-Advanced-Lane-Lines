@@ -593,7 +593,7 @@ line = Line()
 
 def lane_pipeline(img):
 
-    failure_rate =1.3
+    failure_rate = 1.3
 
     undist = undistort(img, objpoints, imgpoints)
     warped = cv2.warpPerspective(undist, M, (undist.shape[1],undist.shape[0]),flags=cv2.INTER_LINEAR)
@@ -610,7 +610,9 @@ def lane_pipeline(img):
 
         left_center = np.average(left_fitx)
         right_center = np.average(right_fitx)
-        diff_x = right_center -  left_center
+        diff_x = right_center - left_center
+
+        # also shall check mid point lane distance
 
         fail_condition = diff_curverad > failure_rate or diff_x > 860 or diff_x < 500
 
@@ -665,15 +667,12 @@ def lane_pipeline(img):
 from moviepy.editor import VideoFileClip
 
 
-'''
-test and adjust the parameter for specific clip, clip at 22second, 39 second
-'''
 
 def process_video(video_path):
 
-    #clip1 = VideoFileClip(video_path).subclip(21,23)
+    #clip1 = VideoFileClip(video_path).subclip(38,39) #challening part at 22 and 39 second
     clip1 = VideoFileClip(video_path)
     video = clip1.fl_image(lane_pipeline)
     video.write_videofile('lane_marking.mp4', audio=False)
 
-process_video("project_video.mp4")
+#process_video("project_video.mp4")
