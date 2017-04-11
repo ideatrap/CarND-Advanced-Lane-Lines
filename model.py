@@ -98,7 +98,7 @@ def perspective_warp(img):
 
     # point of the destination image
     # top_left, bottom_left, top_right, bottom_right
-    factor=0.5
+    factor=0.4
     dst = np.float32([[b_x_l, t_y * factor], [b_x_l, b_y], [b_x_r, t_y * factor], [b_x_r, b_y]])
 
 
@@ -110,18 +110,18 @@ def perspective_warp(img):
     return M, MI
 
 
-def test_perspective_warp():
+def test_perspective_warp(path):
 
-    img = cv2.imread('test_images/test4.jpg') #straight_lines1
+    img = cv2.imread(path) #straight_lines1
     # undistort the image
     undist = undistort(img, objpoints, imgpoints)
 
-    M = perspective_warp(undist)
+    M, MI = perspective_warp(undist)
     warped = cv2.warpPerspective(undist, M, (undist.shape[1],undist.shape[0]),flags=cv2.INTER_LINEAR)
     plt.imshow(warped)
     plt.show()
 
-#test_perspective_warp()
+#test_perspective_warp('test_images/test13.jpg')
 
 
 ########################
@@ -199,6 +199,7 @@ def dir_gradient(img, sobel_kernel=19, thresh=(0, np.pi/2)):
 
 def color_threshold(image, thresh = (0, 255)):
     hls = cv2.cvtColor(image, cv2.COLOR_BGR2HLS)
+
     S = hls[:, :, 2]
     s_binary = np.zeros_like(S)
     s_binary[(S >= thresh[0]) & (S <= thresh[1])] = 1
@@ -237,7 +238,7 @@ def color_threshold(image, thresh = (0, 255)):
 
     combined = np.zeros_like(B)
     combined[((white == 1) | (yellow == 1)) & (s_binary ==1)] = 1
-    return combined
+    return s_binary
 
 
 def combine_gradient(img):
@@ -245,20 +246,20 @@ def combine_gradient(img):
     #grady = sobelY_transform(img)
     grad_mag = mag_gradient(img, mag_thresh=(33, 255))
     #grad_dir = dir_gradient(img, thresh=(0.6, 2))
-    color = color_threshold(img, thresh=(65, 255))
+    color = color_threshold(img, thresh=(70, 255))
 
     combined = np.zeros_like(gradx)
     combined[((gradx == 1) | grad_mag == 1) | (color == 1)] = 1
     return combined
 
-def test_threshold():
+def test_threshold(path):
     #img = cv2.imread('test_images/straight_lines2.jpg')
-    img = cv2.imread('test_images/test1.jpg')
+    img = cv2.imread(path)
 
     # undistort the image
     undist = undistort(img, objpoints, imgpoints)
 
-    M = perspective_warp(undist)
+    M, MI = perspective_warp(undist)
     warped = cv2.warpPerspective(undist, M, (undist.shape[1], undist.shape[0]), flags=cv2.INTER_LINEAR)
 
     combined = combine_gradient(warped)
@@ -266,7 +267,8 @@ def test_threshold():
     plt.imshow(combined, cmap='gray')
     plt.show()
 
-#test_threshold()
+
+#test_threshold('test_images/test13.jpg')
 
 
 ################
@@ -433,9 +435,9 @@ def previous_poly(img, left_fit, right_fit, draw = False):
     return left_fit, right_fit, leftx, rightx, lefty, righty, left_fitx, right_fitx
 
 
-def test_find_lane():
+def test_find_lane(path):
     #img = cv2.imread('test_images/straight_lines2.jpg')
-    img = cv2.imread('test_images/test6.jpg')
+    img = cv2.imread(path)
     # test4 is a stress test
     # undistort the image
     undist = undistort(img, objpoints, imgpoints)
@@ -445,12 +447,11 @@ def test_find_lane():
 
     grad_img = combine_gradient(warped)
 
-    left_fit, right_fit = find_lane(grad_img, draw=True)
+    left_fit, right_fit, leftx, rightx, lefty, righty, left_fitx, right_fitx = find_lane(grad_img, draw=True)
 
     #previous_poly(grad_img, left_fit,right_fit, draw=True)
 
 
-test_find_lane()
 
 #################
 #7. Calculate radius of lane curvature
@@ -495,6 +496,16 @@ def cal_radius_real(leftx, rightx, lefty, righty):
     # Now our radius of curvature is in meters
     return left_curverad, right_curverad, offset
 
+def draw_radius(img, radius, offset):
+
+    message =  'The radius is {:.1f} m'.format(radius)
+    cv2.putText(img, message, (30, 50), 0, 1, (0, 0, 0), 2, cv2.LINE_AA)
+    if (offset > 0):
+        message = 'Vehicle is {:.2f} m left from the center'.format(offset)
+    elif (offset < 0):
+        message = 'Vehicle is {:.2f} m right from the center'.format(-offset)
+    cv2.putText(img, message, (30, 90), 0, 1, (0, 0, 0), 2, cv2.LINE_AA)
+    return img
 
 
 def test_cal_radius():
@@ -509,17 +520,15 @@ def test_cal_radius():
 
     grad_img = combine_gradient(warped)
 
-    left_fit, right_fit, leftx, rightx, lefty, righty= find_lane(grad_img, draw=False)
+    left_fit, right_fit, leftx, rightx, lefty, righty, left_fitx, right_fitx= find_lane(grad_img, draw=False)
 
     #a,b = cal_radius(grad_img.shape, left_fit, right_fit)
     l_m,r_m, offset= cal_radius_real(leftx, rightx, lefty, righty)
 
-    print('Left radius is {:.1f} m'.format(l_m))
-    print('Right radius is {:.1f} m'.format(r_m))
-    if(offset > 0):
-        print('Vehicle is {:.2f} m left from the center'.format(offset))
-    elif(offset < 0):
-        print('Vehicle is {:.2f} m right from the center'.format(offset))
+    result = draw_radius(undist, (l_m+r_m)/2, offset)
+
+    plt.imshow(result)
+    plt.show()
 
 
 #test_cal_radius()
@@ -555,10 +564,10 @@ def draw_lanes(Minv, left_fitx, right_fitx, undist, dim = (720, 1280), draw = Fa
 
     return result
 
-def test_draw_lanes():
-    #img = cv2.imread('test_images/straight_lines2.jpg')
-    img = cv2.imread('test_images/test6.jpg')
-    # test4 is a stress test
+def test_draw_lanes(path):
+
+    img = cv2.imread(path)
+
     # undistort the image
     undist = undistort(img, objpoints, imgpoints)
 
@@ -569,9 +578,9 @@ def test_draw_lanes():
 
     left_fit, right_fit, leftx, rightx, lefty, righty, left_fitx, right_fitx = find_lane(grad_img, draw=False)
 
-    draw_lanes(MI, left_fitx, right_fitx, undist)
+    draw_lanes(MI, left_fitx, right_fitx, undist, draw=True)
 
-#test_draw_lanes()
+#test_draw_lanes('test_images/test8.jpg')
 
 ################
 #9. pipeline
@@ -585,6 +594,8 @@ class Line():
         self.right_fit = None
         self.left_fitx = None
         self.right_fitx = None
+        self.offset = None
+        self.radius = []
 
 test_img = cv2.imread('test_images/test6.jpg')
 M, MI = perspective_warp(test_img)
@@ -593,7 +604,9 @@ line = Line()
 
 def lane_pipeline(img):
 
-    failure_rate = 1.3
+    failure_rate = 1.5
+    diff_x_high = 900
+    diff_x_low = 500
 
     undist = undistort(img, objpoints, imgpoints)
     warped = cv2.warpPerspective(undist, M, (undist.shape[1],undist.shape[0]),flags=cv2.INTER_LINEAR)
@@ -614,24 +627,63 @@ def lane_pipeline(img):
 
         # also shall check mid point lane distance
 
-        fail_condition = diff_curverad > failure_rate or diff_x > 860 or diff_x < 500
+        fail_condition = diff_curverad > failure_rate or diff_x > diff_x_high or diff_x < diff_x_low
 
         #other conditions: 1) curv diff from last image on the same side
-        #
-        #no properlane detected
+
+        #no proper lane detected, and there has been lane detected before
         if fail_condition and line.left_fitx != None:
             line.detected = False
             result = draw_lanes(MI, line.left_fitx, line.right_fitx, undist, draw=False)
+            past_radius = 0
+            count = 0
+            for i in line.radius:
+                past_radius = past_radius + i
+                count = count +1
 
+            past_radius = past_radius/count
+            result = draw_radius(result, past_radius, line.offset)
+
+
+        #found a new line
         else:
             line.detected = True
             line.left_fit = left_fit
             line.right_fit = right_fit
             line.left_fitx = left_fitx
             line.right_fitx = right_fitx
+            line.offset = offset
             result = draw_lanes(MI, left_fitx, right_fitx, undist, draw=False)
+            if line.offset == None: #first line detected
+                result = draw_radius(result, (l_m+r_m)/2, offset)
+                line.radius.append((l_m + r_m) / 2)
+
+            else: #previous line have been detected
+                if len(line.radius)<3:#less than 3 frames identified
+                    line.radius.append((l_m+r_m)/2)
+                    past_radius = 0
+                    count = 0
+                    for i in line.radius:
+                        past_radius = past_radius + i
+                        count = count + 1
+                    past_radius = past_radius / count
+                    result = draw_radius(result, past_radius, offset)
+                else:
+                    line.radius.reverse()
+                    line.radius.pop()
+                    line.radius.reverse()
+
+                    line.radius.append((l_m + r_m) / 2)
+                    past_radius = 0
+                    count = 0
+                    for i in line.radius:
+                        past_radius = past_radius + i
+                        count = count + 1
+                    past_radius = past_radius / count
+                    result = draw_radius(result, past_radius, offset)
 
 
+    #previous frame has a line detected
     elif line.detected == True:
         left_fit, right_fit, leftx, rightx, lefty, righty, left_fitx, right_fitx = previous_poly(grad_img, line.left_fit, line.right_fit, draw=False)
 
@@ -642,11 +694,21 @@ def lane_pipeline(img):
         right_center = np.average(right_fitx)
         diff_x = right_center - left_center
 
-        fail_condition = diff_curverad > failure_rate or diff_x > 860 or diff_x < 500
+        fail_condition = diff_curverad > failure_rate or diff_x > diff_x_high or diff_x < diff_x_low
+
 
         if fail_condition:
             line.detected = False
             result = draw_lanes(MI, line.left_fitx, line.right_fitx, undist, draw=False)
+
+            past_radius = 0
+            count = 0
+            for i in line.radius:
+                past_radius = past_radius + i
+                count = count + 1
+
+            past_radius = past_radius / count
+            result = draw_radius(result, past_radius, line.offset)
 
         else:
             line.detected = True
@@ -654,7 +716,31 @@ def lane_pipeline(img):
             line.right_fit = right_fit
             line.left_fitx = left_fitx
             line.right_fitx = right_fitx
+            line.offset = offset
             result = draw_lanes(MI, left_fitx, right_fitx, undist, draw=False)
+
+            if len(line.radius) < 3:  # less than 3 frames identified
+                line.radius.append((l_m + r_m) / 2)
+                past_radius = 0
+                count = 0
+                for i in line.radius:
+                    past_radius = past_radius + i
+                    count = count + 1
+                past_radius = past_radius / count
+                result = draw_radius(result, past_radius, offset)
+            else:
+                line.radius.reverse()
+                line.radius.pop()
+                line.radius.reverse()
+
+                line.radius.append((l_m + r_m) / 2)
+                past_radius = 0
+                count = 0
+                for i in line.radius:
+                    past_radius = past_radius + i
+                    count = count + 1
+                past_radius = past_radius / count
+                result = draw_radius(result, past_radius, offset)
 
     return result
 
@@ -670,9 +756,13 @@ from moviepy.editor import VideoFileClip
 
 def process_video(video_path):
 
-    #clip1 = VideoFileClip(video_path).subclip(38,39) #challening part at 22 and 39 second
+    #clip1 = VideoFileClip(video_path).subclip(39,41) #challening part at 22 and 39 second
     clip1 = VideoFileClip(video_path)
     video = clip1.fl_image(lane_pipeline)
     video.write_videofile('lane_marking.mp4', audio=False)
 
-#process_video("project_video.mp4")
+process_video("project_video.mp4")
+#test_threshold('test_images/test13.jpg')
+#test_find_lane('test_images/test13.jpg')
+#test_draw_lanes('test_images/test13.jpg')
+#test_perspective_warp('test_images/test13.jpg')
