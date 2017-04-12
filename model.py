@@ -492,6 +492,9 @@ def cal_radius_real(leftx, rightx, lefty, righty):
 
     offset = 1280/2*xm_per_pix - left_peak - (right_peak-left_peak)/2
 
+    #calibrate against real number
+    offset = offset/6
+
 
     # Now our radius of curvature is in meters
     return left_curverad, right_curverad, offset
@@ -604,9 +607,9 @@ line = Line()
 
 def lane_pipeline(img):
 
-    failure_rate = 1.5
+    failure_rate = 1.3
     diff_x_high = 900
-    diff_x_low = 500
+    diff_x_low = 700
 
     undist = undistort(img, objpoints, imgpoints)
     warped = cv2.warpPerspective(undist, M, (undist.shape[1],undist.shape[0]),flags=cv2.INTER_LINEAR)
@@ -756,7 +759,7 @@ from moviepy.editor import VideoFileClip
 
 def process_video(video_path):
 
-    #clip1 = VideoFileClip(video_path).subclip(39,41) #challening part at 22 and 39 second
+    #clip1 = VideoFileClip(video_path).subclip(41,43) #challening part at 22 and 39 second
     clip1 = VideoFileClip(video_path)
     video = clip1.fl_image(lane_pipeline)
     video.write_videofile('lane_marking.mp4', audio=False)
